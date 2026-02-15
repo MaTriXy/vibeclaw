@@ -1846,6 +1846,42 @@ entirely in a browser sandbox.
       </div>
     </div>
 
+    <!-- P2P / Community (preview only) -->
+    <div class="section" id="p2p-section" style="display:none;">
+      <div class="section-header">
+        <div class="section-label">03 / Peer to Peer</div>
+        <h2>Share, connect, collaborate</h2>
+        <p style="color:var(--text-dim);font-size:0.85rem;margin-top:8px;">Your servers, your network. Share configs, connect to friends' gateways, or browse community creations.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;max-width:1100px;margin:0 auto;">
+        <div style="border:1px solid var(--border);border-radius:10px;padding:24px;background:var(--surface);">
+          <div style="font-size:1.4rem;margin-bottom:10px;">🔗</div>
+          <h3 style="font-family:var(--sans);font-size:1rem;font-weight:700;color:var(--text-bright);margin:0 0 8px;">Share Server Configs</h3>
+          <p style="font-family:var(--mono);font-size:0.75rem;color:var(--text);line-height:1.6;">Publish your server configs to the community. One-click import — anyone can boot your agent setup in seconds.</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:10px;padding:24px;background:var(--surface);">
+          <div style="font-size:1.4rem;margin-bottom:10px;">🌐</div>
+          <h3 style="font-family:var(--sans);font-size:1rem;font-weight:700;color:var(--text-bright);margin:0 0 8px;">Connect to Live Gateways</h3>
+          <p style="font-family:var(--mono);font-size:0.75rem;color:var(--text);line-height:1.6;">Connect directly to a friend's running OpenClaw gateway. Chat with their agents, browse their workspace — peer to peer.</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:10px;padding:24px;background:var(--surface);">
+          <div style="font-size:1.4rem;margin-bottom:10px;">🏪</div>
+          <h3 style="font-family:var(--sans);font-size:1rem;font-weight:700;color:var(--text-bright);margin:0 0 8px;">Community Library</h3>
+          <p style="font-family:var(--mono);font-size:0.75rem;color:var(--text);line-height:1.6;">Browse servers built by the community. Security auditors, creative studios, DevOps squads — find and fork what works.</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:10px;padding:24px;background:var(--surface);">
+          <div style="font-size:1.4rem;margin-bottom:10px;">🔒</div>
+          <h3 style="font-family:var(--sans);font-size:1rem;font-weight:700;color:var(--text-bright);margin:0 0 8px;">Private P2P Mesh</h3>
+          <p style="font-family:var(--mono);font-size:0.75rem;color:var(--text);line-height:1.6;">Teams can link their gateways into a private mesh. Shared agent routing, distributed skills, unified session history.</p>
+        </div>
+      </div>
+    </div>
+    <script>
+      if (VibeclawFeatures && VibeclawFeatures.isPreview()) {
+        document.getElementById('p2p-section').style.display = '';
+      }
+    </script>
+
     <!-- Demos -->
     <div class="section" id="demos">
       <div class="section-header">
@@ -1886,7 +1922,7 @@ entirely in a browser sandbox.
     <!-- Pricing (preview only) -->
     <div class="section" id="pricing-section" style="display:none;">
       <div class="section-header">
-        <div class="section-label">04 / Pricing</div>
+        <div class="section-label">05 / Pricing</div>
         <h2>Simple, transparent pricing</h2>
         <p style="color:var(--text-dim);font-size:0.85rem;margin-top:8px;">Free forever for open models. Upgrade for premium AI and cloud features.</p>
       </div>
@@ -1900,8 +1936,8 @@ entirely in a browser sandbox.
             <li>✅ Build unlimited server configs</li>
             <li>✅ 7 free AI models (Solar, Llama, Gemma…)</li>
             <li>✅ Sandbox preview & chat</li>
-            <li>✅ Export configs</li>
-            <li>✅ Local storage</li>
+            <li>✅ Export & import configs</li>
+            <li>✅ Browse community servers</li>
             <li style="color:var(--text-dim);">— 50 messages/day</li>
           </ul>
           <div style="padding:10px;border:1px solid var(--border);border-radius:8px;text-align:center;font-family:var(--mono);font-size:0.75rem;color:var(--text-dim);">Current plan</div>
@@ -1917,7 +1953,8 @@ entirely in a browser sandbox.
             <li>⚡ Claude Sonnet 4, GPT-4o, Gemini Pro</li>
             <li>⚡ Cloud sync — access anywhere</li>
             <li>⚡ Unlimited messages</li>
-            <li>⚡ 10 saved server configs</li>
+            <li>⚡ Publish & share servers P2P</li>
+            <li>⚡ Connect to friends' gateways</li>
             <li>⚡ Priority support</li>
           </ul>
           <button onclick="VibeclawFeatures.openCheckout()" style="width:100%;padding:12px;border:none;border-radius:8px;background:var(--accent);color:#000;font-family:var(--mono);font-size:0.8rem;font-weight:700;cursor:pointer;transition:all 0.15s;text-transform:uppercase;letter-spacing:0.04em;" onmouseover="this.style.background='#ff7070';this.style.boxShadow='0 0 20px rgba(255,92,92,0.3)'" onmouseout="this.style.background='var(--accent)';this.style.boxShadow=''">Upgrade to Pro</button>
@@ -1930,8 +1967,9 @@ entirely in a browser sandbox.
           <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:20px;">For teams building together</div>
           <ul style="list-style:none;padding:0;margin:0 0 24px;font-family:var(--mono);font-size:0.75rem;color:var(--text);line-height:2.2;">
             <li>✅ Everything in Pro, plus:</li>
-            <li>🏢 Shared server library</li>
-            <li>🏢 Team usage analytics</li>
+            <li>🏢 Shared team server library</li>
+            <li>🏢 P2P mesh — connect team gateways</li>
+            <li>🏢 Team usage analytics & billing</li>
             <li>🏢 Bring your own API keys</li>
             <li>🏢 Managed hosting (add-on)</li>
             <li>🏢 SLA & priority support</li>
@@ -1949,7 +1987,7 @@ entirely in a browser sandbox.
     <!-- FAQ -->
     <div class="section">
       <div class="section-header">
-        <div class="section-label">05 / FAQ</div>
+        <div class="section-label">06 / FAQ</div>
         <h2>Common questions</h2>
       </div>
       <div class="faq-list">
