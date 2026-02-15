@@ -598,29 +598,24 @@
 
     <!-- Main -->
     <div class="chat-main">
-      <!-- Endpoint config -->
-      <div class="endpoint-bar">
-        <label>Server</label>
-        <select id="chat-flavour-select" style="flex:1;max-width:240px;">
-          <option value="default">Loading...</option>
-        </select>
-        <input type="text" id="endpoint-url" value="https://vibeclaw.dev/api/chat" style="flex:1;opacity:0.5;" readonly />
-        <select id="endpoint-model" style="display:none;">
-          <option value="upstage/solar-pro-3:free" selected>Solar Pro 3</option>
-        </select>
-        <button class="endpoint-connect" id="connect-btn">Start Chat</button>
-      </div>
+      <!-- Hidden fields for compatibility -->
+      <input type="hidden" id="endpoint-url" value="/api/chat" />
+      <select id="endpoint-model" style="display:none;">
+        <option value="upstage/solar-pro-3:free" selected>Solar Pro 3</option>
+      </select>
+      <button id="connect-btn" style="display:none;"></button>
 
       <!-- Header -->
       <div class="chat-header">
-        <div>
+        <div style="display:flex;align-items:center;gap:12px;">
           <div class="chat-peer-name" id="peer-name">VibeClaw Chat</div>
-          <div class="chat-peer-model" id="peer-model"></div>
+          <select id="chat-flavour-select" style="padding:4px 8px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;color:var(--text-bright);font-family:var(--mono);font-size:0.7rem;outline:none;cursor:pointer;">
+            <option value="default">Loading...</option>
+          </select>
         </div>
-        <!-- auth moved to nav -->
-        <div class="chat-status connecting" id="chat-status">
+        <div class="chat-status connected" id="chat-status" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px;"><circle cx="12" cy="12" r="10"/></svg>
-          <span>Not connected</span>
+          <span>Ready</span>
         </div>
       </div>
 
@@ -628,15 +623,15 @@
       <div class="chat-messages" id="chat-messages">
         <div class="chat-empty" id="chat-empty">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          <p>Connect to an endpoint to start chatting</p>
+          <p>Pick a server above and start typing</p>
         </div>
       </div>
 
       <!-- Input -->
       <div class="chat-input-bar">
         <div class="chat-input-row">
-          <textarea id="chat-input" class="chat-input" placeholder="Type a message..." rows="1" disabled></textarea>
-          <button id="chat-send" class="chat-send" disabled>
+          <textarea id="chat-input" class="chat-input" placeholder="Type a message..." rows="1"></textarea>
+          <button id="chat-send" class="chat-send">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
@@ -1022,20 +1017,19 @@
       if (e.key === 'Enter') connect();
     });
 
+    // Auto-switch server when flavour changes
+    $('chat-flavour-select').addEventListener('change', () => {
+      connect();
+      newSession();
+    });
+
     // ── Init ──
     state.sessions = loadSessions();
     renderSessions();
     renderMessages();
 
-    // Check for server spec from forge
-    const params = new URLSearchParams(location.search);
-    if (params.has('endpoint')) {
-      $('endpoint-url').value = params.get('endpoint');
-      if (params.has('model')) {
-        $('endpoint-model').value = params.get('model');
-      }
-      connect();
-    }
+    // Auto-connect on page load
+    setTimeout(() => connect(), 100);
   </script>
 
   <script src="/auth.js"></script>
