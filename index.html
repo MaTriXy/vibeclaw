@@ -984,7 +984,7 @@
         <div id="pg-creds-sandbox" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--black);">
           <label style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;">Flavour</label>
           <select id="pg-flavour-select" style="padding:6px 10px;background:var(--surface);border:1px solid var(--border);color:var(--text-bright);font-family:var(--mono);font-size:0.72rem;outline:none;opacity:0.9;max-width:180px;">
-            <option value="default">🦀 Claw</option>
+            <option value="default">🦀 OpenClaw</option>
           </select>
           <div style="width:1px;height:18px;background:var(--border);"></div>
           <label style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;">Model</label>
@@ -1258,7 +1258,6 @@ entirely in a browser sandbox.
           } catch (e) { log('init: ' + e.message, 'info'); }
 
           const bootMs = Math.round(performance.now() - t0);
-          const flLabel = activeFlavour ? `${activeFlavour.emoji} ${activeFlavour.name}` : '🦀 OpenClaw';
           log('', 'ok');
           log(`${flLabel} sandbox is live (${bootMs}ms)`, 'ok');
           if (activeFlavour && activeFlavour.id !== 'default') {

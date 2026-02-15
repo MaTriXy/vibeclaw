@@ -1,9 +1,9 @@
 {
   "id": "default",
-  "name": "Claw",
+  "name": "OpenClaw",
   "emoji": "🦀",
   "version": "1.0.0",
-  "description": "The default OpenClaw sandbox agent — coding assistant with file access, code review, and project skills",
+  "description": "The default OpenClaw sandbox — coding assistant with file access, code review, and project skills",
   "author": "vibeclaw",
   "tags": ["coding", "assistant", "sandbox"],
   "agents": [
