@@ -1021,9 +1021,17 @@
       .ticker-dot.blue { background: #60a5fa; }
       .ticker-dot.purple { background: #a78bfa; }
       .ticker-dot.orange { background: #fb923c; }
+      .ticker-reverse {
+        animation: ticker-scroll-reverse 55s linear infinite;
+      }
+      .ticker-reverse:hover { animation-play-state: paused; }
       @keyframes ticker-scroll {
         0% { transform: translateX(0); }
         100% { transform: translateX(-50%); }
+      }
+      @keyframes ticker-scroll-reverse {
+        0% { transform: translateX(-50%); }
+        100% { transform: translateX(0); }
       }
 
       @keyframes hero-crab-float {
@@ -1081,6 +1089,14 @@
       <div class="ticker-track">
         <div class="ticker-content" id="ticker-content">
           <span class="ticker-item">Loading latest AI news…</span>
+        </div>
+      </div>
+    </div>
+    <div class="news-ticker" id="news-ticker-2" style="border-bottom:1px solid var(--border);">
+      <div class="ticker-label">TRENDING</div>
+      <div class="ticker-track">
+        <div class="ticker-content ticker-reverse" id="ticker-content-2">
+          <span class="ticker-item">Loading…</span>
         </div>
       </div>
     </div>
@@ -1515,14 +1531,44 @@ entirely in a browser sandbox.
           return `<span class="ticker-item"><span class="ticker-dot ${dot}"></span>${title}<span style="color:var(--text-dim);font-size:0.6rem;margin-left:4px;">${item.source}</span></span>`;
         }).join('');
 
-        const el = document.getElementById('ticker-content');
-        if (el) {
-          el.innerHTML = html + html; // duplicate for seamless scroll
-          // Adjust speed based on content width
+        // Split items between two tickers
+        const half = Math.ceil(items.length / 2);
+        const items1 = items.slice(0, half);
+        const items2 = items.slice(half);
+
+        // Trending/model items for second ticker
+        const trending = [
+          { title: 'Claude Opus 4.6', source: '↑ 12%', link: '' },
+          { title: 'GPT-5.2', source: '↑ 8%', link: '' },
+          { title: 'Gemini 3 Pro', source: '↑ 15%', link: '' },
+          { title: 'DeepSeek R1', source: '↑ 22%', link: '' },
+          { title: 'Llama 4 Scout', source: '↑ 31%', link: '' },
+          { title: 'Solar Pro 3', source: 'FREE', link: '' },
+          { title: 'Qwen3 8B', source: 'FREE', link: '' },
+          { title: 'Phi-4 Reasoning', source: '↑ 9%', link: '' },
+          { title: 'Mistral Small 3.1', source: 'FREE', link: '' },
+          { title: 'o3', source: '↑ 18%', link: '' },
+        ];
+
+        function renderTicker(el, data) {
+          const h = data.map((item, i) => {
+            const dot = colors[i % colors.length];
+            const title = item.link
+              ? `<a href="${item.link}" target="_blank" rel="noopener">${item.title}</a>`
+              : item.title;
+            return `<span class="ticker-item"><span class="ticker-dot ${dot}"></span>${title}<span style="color:var(--text-dim);font-size:0.65rem;margin-left:4px;">${item.source}</span></span>`;
+          }).join('');
+          el.innerHTML = h + h;
           const w = el.scrollWidth / 2;
-          const speed = Math.max(30, w / 60); // ~60px/sec
+          const speed = Math.max(30, w / 60);
           el.style.animationDuration = speed + 's';
         }
+
+        const el1 = document.getElementById('ticker-content');
+        if (el1) renderTicker(el1, items1.length ? items1 : items);
+
+        const el2 = document.getElementById('ticker-content-2');
+        if (el2) renderTicker(el2, items2.length ? [...items2, ...trending] : trending);
       })();
 
       // ── Boot sandbox ──
