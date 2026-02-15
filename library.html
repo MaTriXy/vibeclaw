@@ -309,9 +309,8 @@
           isCloudMode = true;
           return currentLibrary;
         } catch (err) {
-          console.error('Cloud load error:', err);
-          showToast(`Cloud sync failed, using local cache: ${err.message}`, 'error', 4000);
-          // Fall back to localStorage
+          console.warn('Cloud sync unavailable:', err.message);
+          // Silently fall back to localStorage
           isCloudMode = false;
           try {
             currentLibrary = JSON.parse(localStorage.getItem('clawforge-library') || '[]');
