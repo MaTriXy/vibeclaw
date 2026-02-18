@@ -1,5 +1,34 @@
 import pg from 'pg';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { resolve, dirname } from 'path';
 const { Pool } = pg;
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Load local cache for dev fallback (no DATABASE_URL)
+function getLocalItems() {
+  try {
+    const cachePath = resolve(__dirname, '../../content/explore-cache.json');
+    const cache = JSON.parse(readFileSync(cachePath, 'utf-8'));
+    const items = [];
+    const typeMap = { servers:'server', skills:'skill', plugins:'plugin', tools:'tool', models:'model', recipes:'recipe', knowledge:'knowledge' };
+    for (const [key, entries] of Object.entries(cache)) {
+      if (key === 'meta' || !Array.isArray(entries)) continue;
+      entries.forEach((entry, i) => {
+        const descParts = [entry.category, entry.source, entry.context, entry.pricing].filter(Boolean);
+        items.push({
+          id: `${key}-${i}`, type: typeMap[key] || key, slug: `${key}-${i}`,
+          title: entry.name, description: descParts.join(' · '),
+          author_name: entry.source || entry.category || 'Community',
+          tags: [entry.source, entry.category].filter(Boolean).slice(0, 2),
+          url: entry.url, upvotes: 0, downloads: 0
+        });
+      });
+    }
+    return items;
+  } catch { return []; }
+}
 
 let pool;
 function getPool() {
@@ -65,6 +94,18 @@ function getUser(req) {
 
 export default async (req) => {
   if (req.method === 'OPTIONS') return cors({ ok: true });
+
+  // No database configured — serve from local cache (dev/preview)
+  if (!process.env.DATABASE_URL && req.method === 'GET') {
+    const url = new URL(req.url);
+    const params = url.searchParams;
+    let items = getLocalItems();
+    const type = params.get('type');
+    const q = params.get('q');
+    if (type) items = items.filter(i => i.type === type);
+    if (q) items = items.filter(i => (i.title + i.description).toLowerCase().includes(q.toLowerCase()));
+    return cors(items);
+  }
 
   const url = new URL(req.url);
   const params = url.searchParams;
