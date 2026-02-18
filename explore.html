@@ -1105,7 +1105,7 @@
               <div class="stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;display:inline-block;vertical-align:-2px;margin-right:2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>${item.downloads || 0}</div>
             </div>
             <div class="item-card-actions">
-              ${item.url ? `<a class="btn-mini" href="${item.url}" target="_blank" rel="noopener">View →</a>` : `<button class="btn-mini fork-btn" data-id="${item.id}">Fork</button>`}
+              <button class="btn-mini" onclick="event.stopPropagation();openItemModal('${item.id}')">Open</button>
             </div>
           </div>
         </div>
@@ -1273,7 +1273,7 @@
         openLink.target = '_blank';
         openLink.rel = 'noopener';
         openLink.className = 'btn-action secondary modal-open-link';
-        openLink.textContent = 'Open →';
+        openLink.textContent = 'Visit Source ↗';
         actionsEl.prepend(openLink);
       }
 
