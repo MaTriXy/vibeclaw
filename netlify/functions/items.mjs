@@ -4,12 +4,12 @@ import { fileURLToPath } from 'url';
 import { resolve, dirname } from 'path';
 const { Pool } = pg;
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __funcDir = dirname(fileURLToPath(import.meta.url));
 
 // Load local cache for dev fallback (no DATABASE_URL)
 function getLocalItems() {
   try {
-    const cachePath = resolve(__dirname, '../../content/explore-cache.json');
+    const cachePath = resolve(__funcDir, '../../content/explore-cache.json');
     const cache = JSON.parse(readFileSync(cachePath, 'utf-8'));
     const items = [];
     const typeMap = { servers:'servers', skills:'skills', plugins:'plugins', tools:'tools', models:'models', recipes:'recipes', knowledge:'knowledge' };
