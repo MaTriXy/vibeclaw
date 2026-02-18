@@ -525,7 +525,7 @@
 
     .modal.active {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: center;
     }
 
@@ -533,11 +533,13 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
-      max-width: 900px;
+      max-width: 560px;
       width: 100%;
-      margin: 2rem auto;
-      padding: 2rem;
+      margin: 0 auto;
+      padding: 1.75rem;
       position: relative;
+      max-height: 85vh;
+      overflow-y: auto;
     }
 
     .modal-close {
@@ -1193,8 +1195,13 @@
       document.getElementById('modalDescription').textContent = item.description || 'No description provided.';
       
       // README (basic markdown rendering)
-      const readme = item.readme || '# No README available';
-      document.getElementById('modalReadme').innerHTML = renderMarkdown(readme);
+      const readmeEl = document.getElementById('modalReadme');
+      if (item.readme && item.readme.trim()) {
+        readmeEl.style.display = 'block';
+        readmeEl.innerHTML = renderMarkdown(item.readme);
+      } else {
+        readmeEl.style.display = 'none';
+      }
       
       // Files
       if (item.files && item.files.length > 0) {
@@ -1210,6 +1217,20 @@
       document.getElementById('modalDownload').onclick = () => downloadItem(id);
       document.getElementById('modalFork').onclick = () => forkItem(id);
       document.getElementById('modalFavourite').onclick = () => favouriteItem(id);
+
+      // Add "Open" link if item has a URL
+      const actionsEl = document.querySelector('.modal-actions');
+      const existingOpen = actionsEl.querySelector('.modal-open-link');
+      if (existingOpen) existingOpen.remove();
+      if (item.url) {
+        const openLink = document.createElement('a');
+        openLink.href = item.url;
+        openLink.target = '_blank';
+        openLink.rel = 'noopener';
+        openLink.className = 'btn-action secondary modal-open-link';
+        openLink.textContent = 'Open →';
+        actionsEl.prepend(openLink);
+      }
 
       modal.classList.add('active');
       window.location.hash = `item-${id}`;
