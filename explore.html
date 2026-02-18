@@ -1027,16 +1027,26 @@
       });
     }
 
+    function getFavicon(url) {
+      if (!url) return null;
+      try {
+        const domain = new URL(url).hostname;
+        return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+      } catch { return null; }
+    }
+
     function createItemCard(item) {
       const tags = (item.tags || []).slice(0, 3);
+      const favicon = getFavicon(item.url);
       return `
         <div class="item-card" data-id="${item.id}">
           <div class="item-card-header">
             <span class="type-badge badge-${item.type}">${item.type}</span>
+            ${favicon ? `<img src="${favicon}" alt="" style="width:18px;height:18px;border-radius:3px;object-fit:contain;opacity:0.85;margin-left:auto;" onerror="this.style.display='none'">` : ''}
           </div>
           <h3>${item.title || 'Untitled'}</h3>
           <div class="item-card-description">${item.description || 'No description provided.'}</div>
-          <div class="item-card-author">by ${item.author || 'Anonymous'}</div>
+          <div class="item-card-author">by ${item.author || item.author_name || 'Anonymous'}</div>
           ${tags.length > 0 ? `
             <div class="item-card-tags">
               ${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
