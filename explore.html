@@ -199,7 +199,7 @@
       color: #fff;
     }
     /* Sort chips */
-    .sort-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.04); }
+    .sort-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
     .sort-chip {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 5px 13px; border-radius: 20px;
@@ -787,11 +787,15 @@
       <div class="type-chips" id="typeCards">
         <!-- Dynamically populated -->
       </div>
-      <div class="sort-chips" id="sortChips">
-        <button class="sort-chip active" data-sort="recent">✨ New</button>
-        <button class="sort-chip" data-sort="popular">🔥 Trending</button>
-        <button class="sort-chip" data-sort="downloads">⬇ Downloads</button>
-      </div>
+    </div>
+  </div>
+
+  <!-- Sort Chips -->
+  <div style="display:flex;justify-content:center;padding:12px 0 4px;">
+    <div class="sort-chips" id="sortChips">
+      <button class="sort-chip active" data-sort="recent">✨ New</button>
+      <button class="sort-chip" data-sort="popular">🔥 Trending</button>
+      <button class="sort-chip" data-sort="downloads">⬇ Downloads</button>
     </div>
   </div>
 
