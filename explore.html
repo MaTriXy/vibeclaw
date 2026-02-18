@@ -1047,7 +1047,7 @@
       if (!url) return null;
       try {
         const domain = new URL(url).hostname;
-        return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+        return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
       } catch { return null; }
     }
 
@@ -1058,8 +1058,8 @@
         <div class="item-card" data-id="${item.id}">
           <div class="item-card-header">
             <span class="type-badge badge-${item.type}">${item.type}</span>
-            ${favicon ? `<img src="${favicon}" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:contain;opacity:0.9;margin-left:auto;" onerror="this.style.display='none'">` : ''}
           </div>
+          ${favicon ? `<div style="display:flex;justify-content:center;align-items:center;margin:12px 0 16px;"><img src="${favicon}" alt="" style="width:72px;height:72px;border-radius:14px;object-fit:contain;" onerror="this.parentElement.style.display='none'"></div>` : ''}
           <h3>${item.title || 'Untitled'}</h3>
           <div class="item-card-description">${item.description || 'No description provided.'}</div>
           <div class="item-card-author">by ${item.author || item.author_name || 'Anonymous'}</div>
