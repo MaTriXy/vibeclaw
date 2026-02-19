@@ -1331,11 +1331,8 @@ import ELK from 'elkjs';
 /* ── ELK auto-layout ── */
 const elk = new ELK();
 const ELK_OPTS = {
-  'elk.algorithm': 'layered',
-  'elk.direction': 'RIGHT',
-  'elk.layered.spacing.nodeNodeBetweenLayers': '80',
-  'elk.spacing.nodeNode': '40',
-  'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+  'elk.algorithm': 'mrtree',
+  'elk.spacing.nodeNode': '80',
 };
 
 async function elkLayout(nodes, edges, opts = {}) {
