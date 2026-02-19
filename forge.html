@@ -1263,7 +1263,8 @@
       "react": "https://esm.sh/react@18",
       "react-dom": "https://esm.sh/react-dom@18",
       "react-dom/client": "https://esm.sh/react-dom@18/client",
-      "@xyflow/react": "https://esm.sh/@xyflow/react@12?deps=react@18,react-dom@18"
+      "@xyflow/react": "https://esm.sh/@xyflow/react@12?deps=react@18,react-dom@18",
+      "elkjs": "https://esm.sh/elkjs@0.9.3/lib/elk.bundled.js"
     }
   }
   </script>
@@ -1325,6 +1326,56 @@ import {
   Position,
   Panel,
 } from '@xyflow/react';
+import ELK from 'elkjs';
+
+/* ── ELK auto-layout ── */
+const elk = new ELK();
+const ELK_OPTS = {
+  'elk.algorithm': 'radial',
+  'elk.radial.radius': '280',
+  'elk.radial.compactor': 'NONE',
+  'elk.radial.sortingCriterion': 'NONE',
+  'elk.spacing.nodeNode': '60',
+};
+
+async function elkLayout(nodes, edges, opts = {}) {
+  if (!nodes.length) return nodes;
+
+  // Scale radius based on node count so things don't overlap when expanded
+  const nodeCount = nodes.length;
+  const radius = nodeCount <= 8 ? 280 : nodeCount <= 20 ? 380 : 500;
+
+  // Find the gateway node to use as root
+  const rootNode = nodes.find(n => n.type === 'livegateway' || n.id === 'live-gw' || n.id === 'g1');
+
+  const graph = {
+    id: 'root',
+    layoutOptions: {
+      ...ELK_OPTS,
+      'elk.radial.radius': String(radius),
+      ...(rootNode ? { 'elk.radial.rootNode': rootNode.id } : {}),
+      ...opts,
+    },
+    children: nodes.map(n => ({
+      id: n.id,
+      width: n.measured?.width ?? n.width ?? 220,
+      height: n.measured?.height ?? n.height ?? 70,
+    })),
+    edges: edges
+      .filter(e => nodes.find(n => n.id === e.source) && nodes.find(n => n.id === e.target))
+      .map(e => ({ id: e.id, sources: [e.source], targets: [e.target] })),
+  };
+  try {
+    const result = await elk.layout(graph);
+    return nodes.map(n => {
+      const pos = result.children?.find(c => c.id === n.id);
+      return pos ? { ...n, position: { x: pos.x ?? 0, y: pos.y ?? 0 } } : n;
+    });
+  } catch (err) {
+    console.warn('[elk] layout failed', err);
+    return nodes;
+  }
+}
 
 /* ── Templates ── */
 function loadTemplate(id, setNodes, setEdges, save) {
@@ -2794,10 +2845,11 @@ function ForgeApp() {
       liveDataRef.current = data;
       setLiveSkills(data.skills || []);
       const { nodes: lnodes, edges: ledges } = buildLiveInitial(data);
-      setNodes(lnodes);
       setEdges(ledges);
+      const laid = await elkLayout(lnodes, ledges);
+      setNodes(laid);
       setLiveSelectedAgent(null);
-      setTimeout(() => rfInstance.current?.fitView({ padding:0.15, duration:400 }), 100);
+      setTimeout(() => rfInstance.current?.fitView({ padding:0.15, duration:400 }), 150);
     } catch(e) {
       setLiveError(e.message);
     }
@@ -2819,9 +2871,15 @@ function ForgeApp() {
       if (nowExpanded) {
         // Remove section card, add expanded content
         const { addNodes, addEdges } = buildExpandedNodes(section, data, next);
-        setNodes(nds => [...nds.filter(n => n.id !== sectionCardId), ...addNodes]);
         setEdges(eds => [...eds.filter(e => e.id !== sectionEdgeId), ...addEdges]);
-        setTimeout(() => rfInstance.current?.fitView({ padding:0.15, duration:400 }), 80);
+        setNodes(nds => [...nds.filter(n => n.id !== sectionCardId), ...addNodes]);
+        setTimeout(async () => {
+          const cur = rfInstance.current;
+          if (!cur) return;
+          const laid = await elkLayout(cur.getNodes(), cur.getEdges());
+          setNodes(laid);
+          setTimeout(() => cur.fitView({ padding:0.15, duration:400 }), 80);
+        }, 50);
       } else {
         // Remove expanded content, restore section card
         const prefixMap = { agents:'live-ag-', channels:'live-ch-', skills:'live-skills', sessions:'live-sessions', cron:'live-cron', nodes:'live-nodes' };
@@ -2842,6 +2900,13 @@ function ForgeApp() {
           { id:sectionEdgeId, source:'live-gw', target:sectionCardId, type:'smoothstep',
             style:{stroke:COLORS[section],strokeWidth:1.5,opacity:0.65}, animated:true },
         ]);
+        setTimeout(async () => {
+          const cur = rfInstance.current;
+          if (!cur) return;
+          const laid = await elkLayout(cur.getNodes(), cur.getEdges());
+          setNodes(laid);
+          setTimeout(() => cur.fitView({ padding:0.15, duration:400 }), 80);
+        }, 50);
       }
 
       // Update gateway node expanded state
@@ -3008,6 +3073,13 @@ function ForgeApp() {
           <Background variant="dots" gap={28} size={1} color="#252525" />
           <Controls showInteractive={false} />
           <Panel position="top-right" style={{display:'flex',gap:8,margin:'8px 8px 0 0'}}>
+            <NavBtn onClick={async () => {
+              const cur = rfInstance.current;
+              if (!cur) return;
+              const laid = await elkLayout(cur.getNodes(), cur.getEdges());
+              setNodes(laid);
+              setTimeout(() => cur.fitView({ padding:0.15, duration:400 }), 80);
+            }}>⟳ Arrange</NavBtn>
             <NavBtn onClick={loadLive} primary>↺ Refresh</NavBtn>
           </Panel>
           <Panel position="bottom-center">

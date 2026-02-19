@@ -1,5 +1,9 @@
 import { defineConfig, loadEnv } from 'vite';
 import { resolve } from 'path';
+import { readFile, readdir, stat } from 'fs/promises';
+import { existsSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
 import { WebSocketServer } from 'ws';
@@ -20,6 +24,132 @@ export default defineConfig({
   plugins: isTest ? [] : [
     wasm(),
     topLevelAwait(),
+    // Dev proxy for /api/gateway-live — mirrors the Netlify function
+    {
+      name: 'gateway-live-dev',
+      configureServer(server) {
+        const OC = join(homedir(), '.openclaw');
+        const SKILLS_PATH = join(homedir(), '.nvm', 'versions', 'node', 'v22.14.0', 'lib', 'node_modules', 'openclaw', 'skills');
+        const AGENT_SKILLS_PATH = join(homedir(), '.agents', 'skills');
+
+        const readJSON = async (p, fallback = null) => {
+          try { return JSON.parse(await readFile(p, 'utf8')); } catch { return fallback; }
+        };
+
+        server.middlewares.use('/api/gateway-live', async (req, res) => {
+          res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          try {
+            const config = await readJSON(join(OC, 'openclaw.json'), {});
+
+            // Skills
+            const skills = [];
+            for (const base of [SKILLS_PATH, AGENT_SKILLS_PATH]) {
+              if (!existsSync(base)) continue;
+              const dirs = await readdir(base, { withFileTypes: true }).catch(() => []);
+              for (const d of dirs) {
+                if (!d.isDirectory()) continue;
+                const skillMd = join(base, d.name, 'SKILL.md');
+                let title = d.name;
+                try {
+                  const c = await readFile(skillMd, 'utf8');
+                  const m = c.match(/^#\s*(.+)/m);
+                  if (m) title = m[1].trim();
+                } catch {}
+                const enabled = config.skills?.entries?.[d.name]?.enabled !== false;
+                skills.push({ id: d.name, title, enabled });
+              }
+            }
+
+            // Agents
+            const agentDefaults = config.agents?.defaults ?? {};
+            const agentDefs = config.agents?.entries ?? {};
+            const defaultModel = agentDefaults.model?.primary || 'unknown';
+            const agents = [
+              { id: 'main', name: 'main', model: defaultModel, enabled: true,
+                systemPrompt: agentDefaults.systemPrompt || '', workspace: agentDefaults.workspace || '' },
+              ...Object.entries(agentDefs).map(([id, ag]) => ({
+                id, name: ag.name || id, model: ag.model?.primary || defaultModel,
+                systemPrompt: ag.systemPrompt || '', enabled: ag.enabled !== false,
+              })),
+            ];
+
+            // Channels
+            const channels = Object.entries(config.channels ?? {}).map(([id, ch]) => ({
+              id, type: id, enabled: ch.enabled !== false,
+            }));
+
+            // Models
+            const models = [];
+            for (const [provider, pc] of Object.entries(config.models?.providers ?? {})) {
+              for (const m of (pc.models ?? [])) {
+                models.push({ id: `${provider}/${m.id}`, provider, name: m.name || m.id });
+              }
+            }
+
+            // Cron jobs
+            const cronData = await readJSON(join(OC, 'cron', 'jobs.json'), { jobs: [] });
+            const cronJobs = (cronData.jobs || []).map(j => ({
+              id: j.id, name: j.name || j.id, enabled: j.enabled !== false,
+              schedule: j.schedule, lastStatus: j.state?.lastStatus,
+              payloadKind: j.payload?.kind,
+              payloadMessage: j.payload?.message?.slice?.(0, 200) || j.payload?.text?.slice?.(0, 200) || '',
+            }));
+
+            // Nodes
+            const nodesData = await readJSON(join(OC, 'nodes', 'paired.json'), {});
+            const nodes = Object.values(nodesData).map(n => ({
+              id: n.nodeId, name: n.displayName || n.nodeId, platform: n.platform,
+            }));
+
+            // Sessions
+            const sessionsDir = join(OC, 'agents', 'main', 'sessions');
+            let sessions = [];
+            if (existsSync(sessionsDir)) {
+              const files = await readdir(sessionsDir).catch(() => []);
+              const withStats = await Promise.all(
+                files.filter(f => f.endsWith('.jsonl')).map(async f => {
+                  const s = await stat(join(sessionsDir, f)).catch(() => null);
+                  return { id: f.replace('.jsonl',''), mtime: s?.mtime };
+                })
+              );
+              sessions = withStats.filter(s => s.mtime)
+                .sort((a,b) => b.mtime - a.mtime).slice(0, 12)
+                .map(s => ({ id: s.id, lastActive: s.mtime?.toISOString() }));
+            }
+
+            res.end(JSON.stringify({
+              ok: true,
+              gateway: { port: config.gateway?.port || 18789, version: config.meta?.lastTouchedVersion },
+              agents, skills, channels, models, cronJobs, nodes, sessions, defaultModel,
+            }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ ok: false, error: err.message }));
+          }
+        });
+
+        server.middlewares.use('/api/gateway-patch', async (req, res) => {
+          if (req.method !== 'POST') { res.statusCode = 405; res.end(); return; }
+          res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          let body = '';
+          for await (const chunk of req) body += chunk;
+          try {
+            const { patch } = JSON.parse(body);
+            const r = await fetch(`http://127.0.0.1:18789/api/config`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config?.gateway?.auth?.token || ''}` },
+              body: JSON.stringify(patch),
+            });
+            res.end(JSON.stringify({ ok: r.ok }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ ok: false, error: err.message }));
+          }
+        });
+      },
+    },
     // Server-side chat proxy — key stays on server, only free models allowed
     {
       name: 'chat-proxy',
