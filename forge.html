@@ -1579,6 +1579,7 @@ function ChannelNode({ data, selected }) {
 const nodeTypes = {
   gateway:      GatewayNode,
   livegateway:  LiveGatewayNode,
+  sectioncard:  SectionCardNode,
   agent:        AgentNode,
   skill:        SkillNode,
   skillslist:   SkillsListNode,
@@ -1875,6 +1876,30 @@ function ExportModal({ nodes, edges, onClose }) {
   );
 }
 
+/* ── Section Card — collapsed section node, click to expand ── */
+function SectionCardNode({ data, selected }) {
+  const C = data.color || '#555';
+  const ICONS = { Agents:'🤖', Skills:'🔧', Channels:'📡', Sessions:'🕐', 'Cron Jobs':'⏱', Nodes:'📱' };
+  return (
+    <div className={`vf-node${selected?' selected':''}`}
+         style={{border:`1.5px solid ${C}`,padding:0,overflow:'hidden',width:180,cursor:'pointer'}}
+         >
+      <Handle type="target" position={Position.Left}
+        style={{background:C,border:`2px solid ${C}`,width:10,height:10,top:'50%',transform:'translateY(-50%)'}}/>
+      <Handle type="source" position={Position.Right}
+        style={{background:C,border:`2px solid ${C}`,width:10,height:10,top:'50%',transform:'translateY(-50%)'}}/>
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px'}}>
+        <span style={{fontSize:'1rem'}}>{ICONS[data.label]||'📦'}</span>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:'0.75rem',color:'#e0e0e0'}}>{data.label}</div>
+          <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'0.58rem',color:C,marginTop:1}}>{data.count} {data.count===1?'item':'items'}</div>
+        </div>
+        <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'0.65rem',color:'#333'}}>▶</span>
+      </div>
+    </div>
+  );
+}
+
 /* ── Skills List Node — canvas node showing all skills ── */
 function SkillsListNode({ data, selected }) {
   const [filter, setFilter] = React.useState('');
@@ -2157,28 +2182,55 @@ function LiveGatewayNode({ data, selected }) {
   );
 }
 
-/* ── Live Mode: start with just gateway, expand on demand ── */
+/* ── Live Mode: gateway + all section nodes visible but collapsed ── */
 function buildLiveInitial(data) {
-  return {
-    nodes: [{
-      id: 'live-gw',
-      type: 'livegateway',
-      position: { x: 0, y: 0 },
-      data: {
-        label: 'OpenClaw Gateway',
-        port: data.gateway?.port,
-        version: data.gateway?.version,
-        agentCount: data.agents?.length || 0,
-        skillCount: data.skills?.length || 0,
-        channelCount: data.channels?.length || 0,
-        sessionCount: data.sessions?.length || 0,
-        cronCount: data.cronJobs?.length || 0,
-        nodeCount: data.nodes?.length || 0,
-        expanded: {},
-      },
-    }],
-    edges: [],
-  };
+  const EDGE = (id,s,t,color,active=true) => ({
+    id, source:s, target:t, type:'smoothstep',
+    style:{stroke:active?color:'#2a2a2a', strokeWidth:active?1.5:1, opacity:active?0.65:0.2},
+    animated: active,
+  });
+
+  const sections = [
+    { id:'live-sec-agents',   label:'Agents',    count: data.agents?.length||0,   color:'#818cf8', x:380,  y:-180 },
+    { id:'live-sec-skills',   label:'Skills',    count: data.skills?.length||0,   color:'#4ade80', x:380,  y:-40  },
+    { id:'live-sec-channels', label:'Channels',  count: data.channels?.length||0, color:'#22d3ee', x:-380, y:-100 },
+    { id:'live-sec-sessions', label:'Sessions',  count: data.sessions?.length||0, color:'#f59e0b', x:380,  y:100  },
+    { id:'live-sec-cron',     label:'Cron Jobs', count: data.cronJobs?.length||0, color:'#a855f7', x:0,    y:300  },
+    { id:'live-sec-nodes',    label:'Nodes',     count: data.nodes?.length||0,    color:'#22d3ee', x:-380, y:60   },
+  ];
+
+  const nodes = [{
+    id: 'live-gw',
+    type: 'livegateway',
+    position: { x: 0, y: 0 },
+    data: {
+      label: 'OpenClaw Gateway',
+      port: data.gateway?.port,
+      version: data.gateway?.version,
+      agentCount: data.agents?.length || 0,
+      skillCount: data.skills?.length || 0,
+      channelCount: data.channels?.length || 0,
+      sessionCount: data.sessions?.length || 0,
+      cronCount: data.cronJobs?.length || 0,
+      nodeCount: data.nodes?.length || 0,
+      expanded: {},
+    },
+  }];
+
+  const edges = [];
+
+  // Add collapsed section nodes
+  sections.forEach(s => {
+    nodes.push({
+      id: s.id,
+      type: 'sectioncard',
+      position: { x: s.x, y: s.y },
+      data: { label: s.label, count: s.count, color: s.color, sectionKey: s.id.replace('live-sec-','') },
+    });
+    edges.push(EDGE(`e-${s.id}`, 'live-gw', s.id, s.color, s.count > 0));
+  });
+
+  return { nodes, edges };
 }
 
 function buildExpandedNodes(section, data, currentExpanded) {
@@ -2745,7 +2797,7 @@ function ForgeApp() {
       setNodes(lnodes);
       setEdges(ledges);
       setLiveSelectedAgent(null);
-      setTimeout(() => rfInstance.current?.fitView({ padding:0.3, duration:400 }), 100);
+      setTimeout(() => rfInstance.current?.fitView({ padding:0.15, duration:400 }), 100);
     } catch(e) {
       setLiveError(e.message);
     }
@@ -2761,20 +2813,35 @@ function ForgeApp() {
       const nowExpanded = !prev[section];
       const next = { ...prev, [section]: nowExpanded };
 
+      const sectionCardId = `live-sec-${section}`;
+      const sectionEdgeId = `e-live-sec-${section}`;
+
       if (nowExpanded) {
-        // Add child nodes
+        // Remove section card, add expanded content
         const { addNodes, addEdges } = buildExpandedNodes(section, data, next);
-        setNodes(nds => [...nds.filter(n => !n.id.startsWith(`live-${section.slice(0,-1)}`)), ...addNodes]);
-        setEdges(eds => [...eds.filter(e => !e.id.startsWith(`e${section.slice(0,-1)}`)), ...addEdges]);
+        setNodes(nds => [...nds.filter(n => n.id !== sectionCardId), ...addNodes]);
+        setEdges(eds => [...eds.filter(e => e.id !== sectionEdgeId), ...addEdges]);
         setTimeout(() => rfInstance.current?.fitView({ padding:0.15, duration:400 }), 80);
       } else {
-        // Remove child nodes
+        // Remove expanded content, restore section card
         const prefixMap = { agents:'live-ag-', channels:'live-ch-', skills:'live-skills', sessions:'live-sessions', cron:'live-cron', nodes:'live-nodes' };
         const edgePrefixMap = { agents:'eag-', channels:'ech-', skills:'eskills', sessions:'esessions', cron:'ecron', nodes:'enodes' };
         const prefix = prefixMap[section] || `live-${section}`;
         const edgePrefix = edgePrefixMap[section] || `e${section}`;
-        setNodes(nds => nds.filter(n => !n.id.startsWith(prefix)));
-        setEdges(eds => eds.filter(e => !e.id.startsWith(edgePrefix)));
+        const COLORS = { agents:'#818cf8', skills:'#4ade80', channels:'#22d3ee', sessions:'#f59e0b', cron:'#a855f7', nodes:'#22d3ee' };
+        const LABELS = { agents:'Agents', skills:'Skills', channels:'Channels', sessions:'Sessions', cron:'Cron Jobs', nodes:'Nodes' };
+        const COUNTS = { agents:data.agents?.length||0, skills:data.skills?.length||0, channels:data.channels?.length||0, sessions:data.sessions?.length||0, cron:data.cronJobs?.length||0, nodes:data.nodes?.length||0 };
+
+        setNodes(nds => [
+          ...nds.filter(n => !n.id.startsWith(prefix) && n.id !== sectionCardId),
+          { id: sectionCardId, type:'sectioncard', position: nds.find(n => n.id.startsWith(prefix))?.position || {x:0,y:0},
+            data:{ label:LABELS[section], count:COUNTS[section], color:COLORS[section], sectionKey:section } },
+        ]);
+        setEdges(eds => [
+          ...eds.filter(e => !e.id.startsWith(edgePrefix) && e.id !== sectionEdgeId),
+          { id:sectionEdgeId, source:'live-gw', target:sectionCardId, type:'smoothstep',
+            style:{stroke:COLORS[section],strokeWidth:1.5,opacity:0.65}, animated:true },
+        ]);
       }
 
       // Update gateway node expanded state
@@ -2836,13 +2903,14 @@ function ForgeApp() {
   }, [edges, nodes, save, liveMode]);
 
   const onNodeClick = useCallback((_, node) => {
-    if (liveMode) {
-      if (node.type === 'livegateway') return; // sections handle their own clicks
-      setLiveSelectedAgent({ ...node.data, _nodeType: node.type });
+    if (node.type === 'livegateway') return;
+    if (node.type === 'sectioncard') {
+      // Expand this section — replace card with full content
+      handleLiveToggle(node.data.sectionKey);
       return;
     }
-    setSelectedNode(node);
-  }, [liveMode]);
+    setLiveSelectedAgent({ ...node.data, _nodeType: node.type });
+  }, [handleLiveToggle]);
 
   // Update a live node's data after saving (e.g. agent model change)
   const handleNodeUpdate = useCallback((node, patch) => {
