@@ -2107,7 +2107,23 @@ function LiveGatewayNode({ data, selected }) {
           <span className="nodrag nopan"
             onMouseDown={e=>e.stopPropagation()}
             onClick={e=>{e.preventDefault();e.stopPropagation();window.__liveShowGateway?.();}}
-            style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'0.6rem',color:'#444',cursor:'pointer',padding:'2px 6px',border:'1px solid #1e1e1e',borderRadius:4}}>ⓘ</span>
+            style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'0.6rem',color:'#444',cursor:'pointer',padding:'2px 6px',border:'1px solid #1e1e1e',borderRadius:4}}>⚙</span>
+        </div>
+      </div>
+
+      {/* Overview stats — like admin main page */}
+      <div style={{padding:'8px 14px',borderBottom:'1px solid #141414',display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+        <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'0.56rem'}}>
+          <span style={{color:'#333'}}>status </span><span style={{color:'#4ade80'}}>online</span>
+        </div>
+        <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'0.56rem'}}>
+          <span style={{color:'#333'}}>ws </span><span style={{color:'#555'}}>:{data.port}</span>
+        </div>
+        <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'0.56rem'}}>
+          <span style={{color:'#333'}}>sessions </span><span style={{color:'#f59e0b'}}>{data.sessionCount||0}</span>
+        </div>
+        <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'0.56rem'}}>
+          <span style={{color:'#333'}}>cron </span><span style={{color:'#a855f7'}}>{data.cronCount||0} jobs</span>
         </div>
       </div>
 
@@ -2403,63 +2419,83 @@ function PanelShell({ emoji, title, subtitle, subtitleColor='#4ade80', onClose, 
 
 /* ── Agent Edit Panel ── */
 function LiveAgentPanel({ data, onClose, onSaved }) {
+  const [agentName, setAgentName] = React.useState(data.label || data.agentId || '');
   const [model, setModel] = React.useState(data.model || '');
+  const [fallbacks, setFallbacks] = React.useState((data.fallbackModels||[]).join('\n'));
   const [prompt, setPrompt] = React.useState(data.systemPrompt || '');
   const [workspace, setWorkspace] = React.useState(data.workspace || '');
   const [thinking, setThinking] = React.useState(data.thinking || '');
   const [saving, setSaving] = React.useState(false);
-
   const [saveStatus, setSaveStatus] = React.useState('');
+
   const save = async () => {
-    setSaving(true);
-    setSaveStatus('');
+    setSaving(true); setSaveStatus('');
     try {
+      const fallbackList = fallbacks.split('\n').map(s=>s.trim()).filter(Boolean);
       const r = await fetch('/api/gateway-patch', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ agentPatch: {
           agentId: data.agentId || 'main',
-          patch: { model, systemPrompt: prompt, workspace, ...(thinking ? { thinking } : {}) },
+          patch: { name: agentName, model, fallbackModels: fallbackList, systemPrompt: prompt, workspace, ...(thinking ? { thinking } : {}) },
         }}),
       });
       const d = await r.json();
-      setSaveStatus(d.ok ? '✓ Saved' : `✗ ${d.error}`);
+      setSaveStatus(d.ok ? '✓ Saved — restart to apply' : `✗ ${d.error}`);
       if (d.ok) onSaved?.({ model, systemPrompt: prompt, workspace });
     } catch(e) { setSaveStatus(`✗ ${e.message}`); }
     setSaving(false);
-    setTimeout(() => setSaveStatus(''), 3000);
+    setTimeout(() => setSaveStatus(''), 4000);
   };
 
-  const MODELS = ['anthropic/claude-sonnet-4-6','anthropic/claude-3-5-haiku','openai/gpt-4o','openai/gpt-4o-mini','google/gemini-2.0-flash-exp:free','meta-llama/llama-3.3-70b-instruct:free','upstage/solar-pro-3:free'];
-
+  const MODELS = ['anthropic/claude-sonnet-4-6','anthropic/claude-3-5-haiku','anthropic/claude-opus-4-5','openai/gpt-4o','openai/gpt-4o-mini','google/gemini-2.0-flash-exp:free','google/gemini-2.5-pro-exp-03-25:free','meta-llama/llama-3.3-70b-instruct:free','upstage/solar-pro-3:free','deepseek/deepseek-r1:free'];
   const THINKING = ['', 'low', 'medium', 'high'];
+
   return (
-    <PanelShell emoji="🤖" title={data.label||'Agent'} subtitle={model} onClose={onClose} saving={saving} onSave={save} saveStatus={saveStatus}>
-      {panelField({ label:'Model', children:
+    <PanelShell emoji="🤖" title={data.label||'Agent'} subtitle={model.split('/').pop()} onClose={onClose} saving={saving} onSave={save} saveStatus={saveStatus}>
+
+      {panelField({ label:'Agent ID', children:
+        <input value={data.agentId||'main'} disabled style={{...panelInput,opacity:0.35,cursor:'not-allowed'}}/>
+      })}
+
+      {panelField({ label:'Display Name', children:
+        <input value={agentName} onChange={e=>setAgentName(e.target.value)} style={panelInput} placeholder="e.g. Cynthia"/>
+      })}
+
+      {panelField({ label:'Primary Model', children:
         <select value={model} onChange={e=>setModel(e.target.value)} style={panelInput}>
           {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
           {!MODELS.includes(model) && <option value={model}>{model}</option>}
         </select>
       })}
-      {panelField({ label:'System Prompt', children:
-        <textarea value={prompt} onChange={e=>setPrompt(e.target.value)}
-          rows={8} style={{...panelInput, resize:'vertical', lineHeight:1.5}} />
+
+      {panelField({ label:'Fallback Models', children:
+        <>
+          <textarea value={fallbacks} onChange={e=>setFallbacks(e.target.value)}
+            rows={3} style={{...panelInput,resize:'vertical',lineHeight:1.6}}
+            placeholder={'one model per line\ne.g. openai/gpt-4o'}/>
+          <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'0.54rem',color:'#333',marginTop:3}}>one per line · used if primary fails or rate-limits</div>
+        </>
       })}
-      {panelField({ label:'Workspace', children:
-        <input value={workspace} onChange={e=>setWorkspace(e.target.value)} style={panelInput} placeholder="/path/to/workspace" />
-      })}
+
       {panelField({ label:'Thinking Mode', children:
         <select value={thinking} onChange={e=>setThinking(e.target.value)} style={panelInput}>
           {THINKING.map(t => <option key={t} value={t}>{t || 'off'}</option>)}
         </select>
       })}
-      {data.fallbackModels?.length > 0 && (
-        <div style={{marginBottom:12,padding:'8px 10px',background:'#0e0e0e',border:'1px solid #1a1a1a',borderRadius:6}}>
-          <span style={panelLabel}>Fallback Models</span>
-          {data.fallbackModels.map(m => (
-            <div key={m} style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'0.65rem',color:'#555',marginBottom:2}}>· {m}</div>
-          ))}
-        </div>
-      )}
+
+      {panelField({ label:'Workspace', children:
+        <input value={workspace} onChange={e=>setWorkspace(e.target.value)} style={panelInput} placeholder="/path/to/workspace"/>
+      })}
+
+      {panelField({ label:'System Prompt', children:
+        <>
+          <textarea value={prompt} onChange={e=>setPrompt(e.target.value)}
+            rows={10} style={{...panelInput,resize:'vertical',lineHeight:1.5}}
+            placeholder={'Leave empty to use workspace files\n(SOUL.md, AGENTS.md, USER.md etc.)'}/>
+          <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:'0.54rem',color:'#333',marginTop:3}}>tip: workspace SOUL.md / AGENTS.md override this at runtime</div>
+        </>
+      })}
+
     </PanelShell>
   );
 }
@@ -2673,7 +2709,7 @@ function ForgeApp() {
   const rfInstance = useRef(null);
 
   // Live mode
-  const [liveMode, setLiveMode] = useState(false);
+  const liveMode = true;
   const [liveData, setLiveData] = useState(null);
   const [liveSkills, setLiveSkills] = useState([]);
   const [liveLoading, setLiveLoading] = useState(false);
@@ -2686,13 +2722,8 @@ function ForgeApp() {
     localStorage.setItem('vf-forge', JSON.stringify({ nodes: nds, edges: eds }));
   }, []);
 
-  // On mount: load saved designer state
-  React.useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('vf-forge'));
-      if (saved?.nodes?.length) { setNodes(saved.nodes); setEdges(saved.edges||[]); }
-    } catch(e) {}
-  }, []);
+  // On mount: load live data immediately
+  React.useEffect(() => { loadLive(); }, []);
 
   // Track which sections are expanded
   const [liveExpanded, setLiveExpanded] = useState({});
@@ -2869,7 +2900,7 @@ function ForgeApp() {
 
   return (
     <div style={{display:'flex', height:'calc(100vh - 57px)', overflow:'hidden'}}>
-      {!liveMode && <Palette onAdd={addNode} />}
+      {/* Palette removed — canvas is the admin, not a designer */}
       <div style={{flex:1, position:'relative'}}>
         {/* Live mode banner */}
         {liveMode && (
@@ -2909,14 +2940,7 @@ function ForgeApp() {
           <Background variant="dots" gap={28} size={1} color="#252525" />
           <Controls showInteractive={false} />
           <Panel position="top-right" style={{display:'flex',gap:8,margin:'8px 8px 0 0'}}>
-            {!liveMode && <>
-              <NavBtn onClick={() => setShowAiModal(true)}>✨ AI Build</NavBtn>
-              <NavBtn onClick={() => setShowExportModal(true)}>⬇ Export</NavBtn>
-            </>}
-            <NavBtn onClick={toggleLive} primary={liveMode}>
-              {liveMode ? '⬡ Designer' : '◉ Live'}
-            </NavBtn>
-            {!liveMode && <NavBtn primary>▶ Deploy</NavBtn>}
+            <NavBtn onClick={loadLive} primary>↺ Refresh</NavBtn>
           </Panel>
           <Panel position="bottom-center">
             <div style={{
@@ -2925,21 +2949,12 @@ function ForgeApp() {
               display:'flex', alignItems:'center', gap:12,
               fontFamily:"'JetBrains Mono',monospace", fontSize:'0.65rem', color:'#444',
             }}>
-              {liveMode ? (
-                <>
-                  <span style={{color:'#4ade80'}}>live</span>
-                  <span style={{color:'#1e1e1e'}}>|</span>
-                  <span>click an agent to manage skills</span>
-                </>
-              ) : (
-                <>
-                  <span>{nodes.length} node{nodes.length!==1?'s':''}</span>
-                  <span style={{color:'#1e1e1e'}}>|</span>
-                  <span>{edges.length} connection{edges.length!==1?'s':''}</span>
-                  <span style={{color:'#1e1e1e'}}>|</span>
-                  <span>forge v2</span>
-                </>
-              )}
+              <span style={{color:'#4ade80'}}>●</span>
+              <span>{nodes.length} nodes</span>
+              <span style={{color:'#1e1e1e'}}>|</span>
+              <span>{edges.length} connections</span>
+              <span style={{color:'#1e1e1e'}}>|</span>
+              <span>click to expand · click node to edit</span>
             </div>
           </Panel>
         </ReactFlow>
