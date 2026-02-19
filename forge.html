@@ -1331,8 +1331,11 @@ import ELK from 'elkjs';
 /* ── ELK auto-layout ── */
 const elk = new ELK();
 const ELK_OPTS = {
-  'elk.algorithm': 'radial',
-  'elk.spacing.nodeNode': '80',
+  'elk.algorithm': 'layered',
+  'elk.direction': 'RIGHT',
+  'elk.layered.spacing.nodeNodeBetweenLayers': '80',
+  'elk.spacing.nodeNode': '40',
+  'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
 };
 
 async function elkLayout(nodes, edges, opts = {}) {
@@ -2826,7 +2829,15 @@ function ForgeApp() {
   const runLayout = useCallback(async (opts = {}) => {
     const cur = rfInstance.current;
     if (!cur) return;
-    const laid = await elkLayout(cur.getNodes(), cur.getEdges(), opts);
+    const ns = cur.getNodes();
+    const es = cur.getEdges();
+
+    // Use 'radial' for the initial global layout, 'layered' for incremental
+    const isInitialLayout = ns.length <= (Object.keys(liveDataRef.current || {}).length + 1);
+    const algorithm = isInitialLayout ? 'radial' : 'layered';
+    const layoutOptions = { ...opts, 'elk.algorithm': algorithm };
+
+    const laid = await elkLayout(ns, es, layoutOptions);
     setNodes(laid);
     setTimeout(() => cur.fitView({ padding:0.15, duration:400 }), 80);
   }, [setNodes]);
