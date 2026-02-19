@@ -2304,7 +2304,7 @@ function buildLiveInitial(data) {
   return { nodes, edges };
 }
 
-function buildExpandedNodes(section, data, currentExpanded) {
+function buildExpandedNodes(section, data, currentExpanded, parentId, parentPosition) {
   const addNodes = [];
   const addEdges = [];
   const EDGE = (id,s,t,color,active=true) => ({
@@ -2313,62 +2313,54 @@ function buildExpandedNodes(section, data, currentExpanded) {
     animated: active,
   });
 
+  const basePosition = parentPosition || { x: 0, y: 0 };
+
   if (section === 'agents') {
     (data.agents||[]).forEach((ag,i) => {
-      const total = data.agents.length;
-      const angle = (i / total) * Math.PI * 0.8 - Math.PI * 0.4;
-      const x = 380 + Math.sin(angle) * 60;
-      const y = (i - (total-1)/2) * 160;
-      addNodes.push({ id:`live-ag-${ag.id}`, type:'agent', position:{x,y},
+      addNodes.push({ id:`live-ag-${ag.id}`, type:'agent', position: basePosition,
         data:{
-          label: ag.name||ag.id,
-          model: ag.model,
-          agentId: ag.id,
-          enabled: ag.enabled,
-          liveAgent: true,
-          workspace: ag.workspace,
-          systemPrompt: ag.systemPrompt,
-          thinking: ag.thinking,
-          fallbackModels: ag.fallbackModels,
+          label: ag.name||ag.id, model: ag.model, agentId: ag.id, enabled: ag.enabled,
+          liveAgent: true, workspace: ag.workspace, systemPrompt: ag.systemPrompt,
+          thinking: ag.thinking, fallbackModels: ag.fallbackModels,
         } });
-      addEdges.push(EDGE(`eag-${ag.id}`,'live-gw',`live-ag-${ag.id}`,'#818cf8', ag.enabled!==false));
+      addEdges.push(EDGE(`eag-${ag.id}`, parentId, `live-ag-${ag.id}`, '#818cf8', ag.enabled!==false));
     });
   }
 
   if (section === 'skills') {
-    addNodes.push({ id:'live-skills', type:'skillslist', position:{x:380, y:-280},
+    // Skills are now a single large node, not individual items
+    addNodes.push({ id:'live-skills-list', type:'skillslist', position: basePosition,
       data:{ skills: data.skills || [] } });
-    addEdges.push(EDGE('eskills','live-gw','live-skills','#4ade80'));
+    addEdges.push(EDGE('eskillslist', parentId, 'live-skills-list', '#4ade80'));
   }
 
   if (section === 'channels') {
     (data.channels||[]).forEach((ch,i) => {
-      const total = data.channels.length;
-      const y = (i - (total-1)/2) * 140;
       const { id: _id, ...chConfig } = ch;
-      addNodes.push({ id:`live-ch-${ch.id}`, type:'channel', position:{x:-360,y},
+      addNodes.push({ id:`live-ch-${ch.id}`, type:'channel', position: basePosition,
         data:{ label:ch.type||ch.id, enabled:ch.enabled, ...chConfig } });
-      addEdges.push(EDGE(`ech-${ch.id}`,`live-ch-${ch.id}`,'live-gw','#22d3ee', ch.enabled!==false));
+      addEdges.push(EDGE(`ech-${ch.id}`, parentId, `live-ch-${ch.id}`, '#22d3ee', ch.enabled!==false));
     });
   }
 
   if (section === 'sessions') {
-    addNodes.push({ id:'live-sessions', type:'sessionslist', position:{x:420, y:280},
+    addNodes.push({ id:'live-sessions-list', type:'sessionslist', position: basePosition,
       data:{ sessions: data.sessions||[] } });
-    addEdges.push(EDGE('esessions','live-gw','live-sessions','#f59e0b'));
+    addEdges.push(EDGE('esessionslist', parentId, 'live-sessions-list', '#f59e0b'));
   }
 
   if (section === 'cron') {
-    const anyActive = (data.cronJobs||[]).some(j => j.enabled !== false);
-    addNodes.push({ id:'live-cron', type:'cronlist', position:{x:0, y:360},
-      data:{ cronJobs: data.cronJobs||[] } });
-    addEdges.push(EDGE('ecron','live-gw','live-cron','#a855f7', anyActive));
+    (data.cronJobs||[]).forEach((j, i) => {
+        addNodes.push({ id:`live-cron-${j.id}`, type:'cron', position:basePosition, data: j });
+        addEdges.push(EDGE(`ecron-${j.id}`, parentId, `live-cron-${j.id}`, '#a855f7', j.enabled));
+    });
   }
 
   if (section === 'nodes') {
-    addNodes.push({ id:'live-nodes', type:'nodeslist', position:{x:-420, y:-240},
-      data:{ nodes: data.nodes||[] } });
-    addEdges.push(EDGE('enodes','live-gw','live-nodes','#22d3ee'));
+    (data.nodes||[]).forEach((n, i) => {
+        addNodes.push({ id:`live-node-${n.id}`, type:'node', position:basePosition, data: n });
+        addEdges.push(EDGE(`enode-${n.id}`, parentId, `live-node-${n.id}`, '#22d3ee', true));
+    });
   }
 
   return { addNodes, addEdges };
