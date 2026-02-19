@@ -1332,10 +1332,7 @@ import ELK from 'elkjs';
 const elk = new ELK();
 const ELK_OPTS = {
   'elk.algorithm': 'radial',
-  'elk.radial.radius': '280',
-  'elk.radial.compactor': 'NONE',
-  'elk.radial.sortingCriterion': 'NONE',
-  'elk.spacing.nodeNode': '60',
+  'elk.spacing.nodeNode': '80',
 };
 
 async function elkLayout(nodes, edges, opts = {}) {
@@ -1367,9 +1364,23 @@ async function elkLayout(nodes, edges, opts = {}) {
   };
   try {
     const result = await elk.layout(graph);
+
+    // Center the graph around (0,0)
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    result.children?.forEach(node => {
+      minX = Math.min(minX, node.x);
+      minY = Math.min(minY, node.y);
+      maxX = Math.max(maxX, node.x + (node.width ?? 0));
+      maxY = Math.max(maxY, node.y + (node.height ?? 0));
+    });
+    const graphWidth = maxX - minX;
+    const graphHeight = maxY - minY;
+    const offsetX = -minX - graphWidth / 2;
+    const offsetY = -minY - graphHeight / 2;
+
     return nodes.map(n => {
       const pos = result.children?.find(c => c.id === n.id);
-      return pos ? { ...n, position: { x: pos.x ?? 0, y: pos.y ?? 0 } } : n;
+      return pos ? { ...n, position: { x: (pos.x ?? 0) + offsetX, y: (pos.y ?? 0) + offsetY } } : n;
     });
   } catch (err) {
     console.warn('[elk] layout failed', err);
